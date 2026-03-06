@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивна шахматна дъска</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chessboard {
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .chessboard td, .chessboard th {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid #333;
+            font-size: 36px;
+            cursor: pointer;
+        }
+        .chessboard .white {
+            background-color: #f5f5f5;
+        }
+        .chessboard .black {
+            background-color: #333;
+            color: #fff;
+        }
+        .labels {
+            font-weight: bold;
+            text-align: center;
+            border: none !important;
+            padding: 0;
+            margin: 0;
+            font-size: 17px !important;    
+        }
+        .selected {
+            outline: 3px solid red;
+        }
+        .history {
+            margin-top: 20px;
+            font-size: 16px;
+            width: 300px;
+            text-align: left;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .history h3 {
+            margin-bottom: 10px;
+        }
+		.history ul {
+		display: block;
+		list-style-type: none;
+		padding: 0;
+		margin: 0;
+		}
+		#historyList li {
+		font-family: 'Arial', sans-serif;
+		font-size: 16px;
+		}
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .captured {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            width: 100%;
+			gap:0;
+        }
+        .captured div {
+            width: 48%;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .captured h3 {
+            text-align: center;
+        }
+        .captured ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        #capturedWhite {
+            border-right: 2px solid #ddd;
+        }
+        input[type="file"], input[type="text"] {
+            padding: 10px;
+            margin-top: 10px;
+            width: 300px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        input[type="file"]:hover, input[type="text"]:hover {
+            border-color: #888;
+        }
+        .controls {
+            display: flex;
+            flex-direction: rows;
+            align-items: center;
+            margin-top: 20px;
+        }
+		@keyframes moveAnimation {
+		0% {
+			transform: scale(1);
+			opacity: 1;
+			outline: 3px solid red;
+		}
+		50% {
+			transform: scale(1.2);
+			opacity: 0.5;
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		}
+		.moving-piece {
+			animation: moveAnimation 0.5s ease-out;
+		}
+		.current-player {
+		font-size: 18px;
+		font-weight: bold;
+		margin: 10px 0;
+}
+
+    </style>
+</head>
+<body>
+<div id="currentPlayer" class="current-player"></div>
+
+    <table class="chessboard" id="chessboard">
+        <tbody>
+            <!-- Дъската ще бъде попълнена с JavaScript -->
+        </tbody>
+    </table>
+		<div>
+            <label for="moveInput">Въведете ход (напр. E2-E4):</label>
+            <input type="text" id="moveInput" placeholder="E2-E4">
+            <button id="executeMove" onclick="handleManualMove()">Изпълни ход</button>
+        </div>
+    <div class="history">
+        <h3>История на играта:</h3>
+        <ul id="historyList"></ul>
+    </div>
+    <div class="controls">
+        <button id="exportHistory" style="display:block;">Експортиране на историята</button><br>
+        <input type="file" id="importHistory" accept=".txt">
+        <button id="importHistoryBtn">Импортиране на история</button>
+		<button onclick="clearCurrentGameState()">Изчисти дъската</button>
+    </div>
+    <div class="captured">
+        <div id="capturedWhite">
+            <h3>Взети бели фигури</h3>
+            <ul></ul>
+        </div>
+        <hr>
+        <div id="capturedBlack">
+            <h3>Взети черни фигури</h3>
+            <ul></ul>
+        </div>
+    </div>
+    <script>
+	// Обект за картографиране на символите към имената на фигурите
+	const pieceNames = {
+		'♟': 'Пешка', '♞': 'Кон', '♝': 'Офицер',
+		'♜': 'Топ', '♛': 'Царица', '♚': 'Цар',
+		'♙': 'Пешка', '♘': 'Кон', '♗': 'Офицер',
+		'♖': 'Топ', '♕': 'Царица', '♔': 'Цар'
+	};
+    const chessboard = document.getElementById('chessboard');
+	const historyList = document.getElementById('historyList');
+	const exportHistoryBtn = document.getElementById('exportHistory');
+	
+	const moveInput = document.getElementById('moveInput');
+	const executeMoveBtn = document.getElementById('executeMove');
+	const pieces = {
+		black: ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+		white: ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'],
+		pawn: {
+			black: '♟',
+			white: '♙'
+		},
+		knight: {
+			black: '♞',
+			white: '♘'
+		  },
+		  bishop: {
+			black: '♝',
+			white: '♗'
+		  },
+		  rook: {
+			black: '♜',
+			white: '♖'
+		  },
+		  queen: {
+			black: '♛',
+			white: '♕'
+		  },
+		  king: {
+			black: '♚',
+			white: '♔'
+		  }
+	};
+	let selectedCell = null; 
+	let gameHistory = []; 
+	let isWhiteTurn = true; 
+	let keyboardSelected = { row: 0, col: 0 }; 
+
+	
+	function createChessboard() {
+		for (let row = 0; row < 8; row++) {
+			const tr = document.createElement('tr');
+			for (let col = 0; col < 8; col++) {
+				const td = document.createElement('td');
+				td.classList.add((row + col) % 2 === 0 ? 'white' : 'black');
+				td.dataset.row = row;
+				td.dataset.col = col;
+
+				
+				if (row === 0) td.textContent = pieces.black[col];
+				if (row === 1) td.textContent = pieces.pawn.black;
+				if (row === 6) td.textContent = pieces.pawn.white;
+				if (row === 7) td.textContent = pieces.white[col];
+
+				
+				td.addEventListener('click', () => handleClick(td));
+				td.draggable = true;
+				td.addEventListener('dragstart', handleDragStart);
+				td.addEventListener('dragover', handleDragOver);
+				td.addEventListener('drop', handleDrop);
+
+				tr.appendChild(td);
+			}
+			tr.appendChild(createLabel(8 - row)); 
+			chessboard.appendChild(tr);
+		}
+		chessboard.appendChild(createFooter()); 
+	}
+	
+	function createLabel(number) {
+		const th = document.createElement('th');
+		th.classList.add('labels');
+		th.textContent = number;
+		return th;
+	}
+	
+	function createFooter() {
+		const tr = document.createElement('tr');
+		['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(letter => {
+			const th = document.createElement('th');
+			th.classList.add('labels');
+			th.textContent = letter;
+			tr.appendChild(th);
+		});
+		return tr;
+	}
+	
+	function handleClick(td) {
+    if (selectedCell) {
+        selectedCell.classList.remove('selected');  
+        const startCol = selectedCell.dataset.col;
+        const startRow = selectedCell.dataset.row;
+        const endCol = td.dataset.col;
+        const endRow = td.dataset.row;
+        
+        
+        const move = convertToNotation(startCol, startRow) + '-' + convertToNotation(endCol, endRow);
+        const pieceSymbol = selectedCell.textContent; 
+        const pieceType = getPieceType(pieceSymbol);  
+
+        if (isMoveValid(selectedCell, td)) {
+            
+            td.textContent = selectedCell.textContent;
+            selectedCell.textContent = '';
+
+            
+            addToHistory(move, pieceType);
+
+            switchTurn();
+        }
+        resetSelection();
+    } else {
+        selectedCell = td;
+        selectedCell.classList.add('selected'); 
+    }
+}
+	function isMoveValid(startCell, endCell) {
+    const piece = startCell.textContent;
+    if (!piece) return false;
+
+    const isWhitePiece = piece.charCodeAt(0) >= 9812 && piece.charCodeAt(0) <= 9817;
+    const isBlackPiece = piece.charCodeAt(0) >= 9818 && piece.charCodeAt(0) <= 9823;
+
+    
+    if (endCell.textContent !== '') {
+        const targetPiece = endCell.textContent;
+        const isEndWhite = targetPiece.charCodeAt(0) >= 9812 && targetPiece.charCodeAt(0) <= 9817;
+        const isEndBlack = targetPiece.charCodeAt(0) >= 9818 && targetPiece.charCodeAt(0) <= 9823;
+
+        if ((isWhitePiece && isEndWhite) || (isBlackPiece && isEndBlack)) {
+            console.log('Не можете да вземете своята собствена фигура!');
+            resetSelection();
+            return false;
+        }
+    }
+
+    if ((isWhiteTurn && !isWhitePiece) || (!isWhiteTurn && !isBlackPiece)) {
+        console.log(isWhiteTurn ? 'Сега е ред на белите.' : 'Сега е ред на черните.');
+        resetSelection();
+        return false;
+    }
+    return true;
+	}
+	function switchTurn() {
+    isWhiteTurn = !isWhiteTurn; 
+    updateCurrentPlayer();      
+}
+
+function updateCurrentPlayer() {
+    const currentPlayerDisplay = document.getElementById('currentPlayer'); 
+    currentPlayerDisplay.textContent = isWhiteTurn ? 'Ред на белите' : 'Ред на черните';
+}
+
+
+	function resetSelection() {
+    if (selectedCell) {
+        selectedCell.classList.remove('selected');
+        selectedCell = null;
+    }
+}
+
+function getPieceType(piece) {
+    
+    if (piece && piece.type) {
+        return piece.type;  
+    }
+    return null;
+}
+
+function addToHistory(move, pieceType) {
+    const listItem = document.createElement('li');
+    
+    const playerColor = isWhiteTurn ? 'Бяла фигура' : 'Черна фигура';
+    
+    const [start, end] = move.split('-');
+    const startCol = start.charAt(0);  
+    const startRow = start.charAt(1);  
+    const endCol = end.charAt(0);     
+    const endRow = end.charAt(1);    
+
+    let pieceSymbol = '';
+    let pieceName = ''; 
+    switch(pieceType) {
+        case 'pawn': 
+            pieceSymbol = isWhiteTurn ? '♙' : '♟'; 
+            pieceName = isWhiteTurn ? 'Пешка' : 'Пешка'; break;
+        case 'knight': 
+            pieceSymbol = isWhiteTurn ? '♘' : '♞'; 
+            pieceName = isWhiteTurn ? 'Кон' : 'Кон'; break;
+        case 'bishop': 
+            pieceSymbol = isWhiteTurn ? '♗' : '♝'; 
+            pieceName = isWhiteTurn ? 'Офицер' : 'Офицер'; break;
+        case 'rook': 
+            pieceSymbol = isWhiteTurn ? '♖' : '♜'; 
+            pieceName = isWhiteTurn ? 'Топ' : 'Топ'; break;
+        case 'queen': 
+            pieceSymbol = isWhiteTurn ? '♕' : '♛'; 
+            pieceName = isWhiteTurn ? 'Царица' : 'Царица'; break;
+        case 'king': 
+            pieceSymbol = isWhiteTurn ? '♔' : '♚'; 
+            pieceName = isWhiteTurn ? 'Цар' : 'Цар'; break;
+        default: pieceSymbol = ''; pieceName = ''; break;
+    }
+
+    listItem.innerHTML = `${playerColor} - ${pieceSymbol} ${pieceName} от ${startCol}${startRow} до ${endCol}${endRow}`;
+    historyList.appendChild(listItem);
+    gameHistory.push(move);
+}
+
+	function exportHistory() {
+		const historyText = gameHistory.join('\n');
+		const blob = new Blob([historyText], { type: 'text/plain' });
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = 'game_history.txt';
+		link.click();
+	}
+	
+	function convertToNotation(col, row) {
+		const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+		return colLetters[col] + row;
+	}
+
+	function convertNotationToCoords(notation) {
+		const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+		const startCol = colLetters.indexOf(notation[0].toUpperCase());
+		const startRow = 8 - parseInt(notation[1]);
+		const endCol = colLetters.indexOf(notation[3].toUpperCase());
+		const endRow = 8 - parseInt(notation[4]);
+		return { startCol, startRow, endCol, endRow };
+	}
+
+	const capturedWhite = document.getElementById('capturedWhite').querySelector('ul');
+	const capturedBlack = document.getElementById('capturedBlack').querySelector('ul');
+
+	function updateHistory() {
+		historyList.textContent = '';  
+		gameHistory.forEach(move => {
+		const listItem = document.createElement('li');
+		listItem.textContent = move;
+		historyList.appendChild(listItem); 
+		});
+	}
+
+	function resetSelection() {
+		if (selectedCell) {
+			selectedCell.classList.remove('selected');
+			selectedCell = null;
+		}
+	}
+	
+	function handleManualMove() {
+    const moveInput = document.getElementById('manualMoveInput').value.trim(); 
+    if (moveInput) {
+        const isValid = executeMove(moveInput); 
+        if (isValid) {
+            updateBoard();   
+            switchTurn();    
+        } else {
+            alert('Невалиден ход!'); 
+        }
+    }
+}
+
+	function executeMove() {
+	
+    const move = moveInput.value.trim(); 
+	console.log("Въведен ход:", move);
+    if (move.length === 5 && move[2] === '-') {
+        const { startCol, startRow, endCol, endRow } = convertNotationToCoords(move);
+
+        if (startRow >= 0 && startRow < 8 && endRow >= 0 && endRow < 8) {
+            const startCell = chessboard.rows[startRow].cells[startCol];
+            const endCell = chessboard.rows[endRow].cells[endCol];
+
+            if (isMoveValid(startCell, endCell)) {
+
+                if (endCell.textContent.trim()) {
+                    const capturedPiece = document.createElement('li');
+                    capturedPiece.textContent = endCell.textContent;
+
+                    if (endCell.textContent.charCodeAt(0) >= 9818) { 
+                        capturedBlack.appendChild(capturedPiece);
+                    } else {
+                        capturedWhite.appendChild(capturedPiece);
+                    }
+                }
+
+                endCell.textContent = startCell.textContent;
+                startCell.textContent = ''; 
+
+                addToHistory(move, getPieceType(endCell.textContent));
+
+                switchTurn(); 
+
+                updateCurrentPlayer(); 
+            }
+        }
+    } else {
+        console.log("Невалиден ход!");
+    }
+    resetSelection();
+}
+
+	function handleDragStart(event) {
+		event.dataTransfer.setData('text/plain', `${event.target.dataset.row},${event.target.dataset.col}`);
+	}
+
+	function handleDragOver(event) {
+		event.preventDefault();
+	}
+
+	function handleDrop(event) {
+		const [startRow, startCol] = event.dataTransfer.getData('text/plain').split(',').map(Number);
+		const endRow = parseInt(event.target.dataset.row);
+		const endCol = parseInt(event.target.dataset.col);
+
+		const startCell = chessboard.rows[startRow].cells[startCol];
+		const endCell = chessboard.rows[endRow].cells[endCol];
+
+		if (isMoveValid(startCell, endCell)) {
+
+			if (endCell.textContent.trim()) {
+			const capturedPiece = document.createElement('li');
+			capturedPiece.textContent = endCell.textContent;
+			const isWhite = endCell.textContent.charCodeAt(0) >= 9812 && endCell.textContent.charCodeAt(0) <= 9817;
+			if (isWhite) {
+				capturedWhite.appendChild(capturedPiece);
+			} else {
+				capturedBlack.appendChild(capturedPiece);
+			}
+			}
+
+			endCell.textContent = startCell.textContent;
+			startCell.textContent = '';
+
+			addToHistory(`${convertToNotation(startCol, 8 - startRow)}-${convertToNotation(endCol, 8 - endRow)}`);
+			switchTurn();
+		}
+	}
+
+	document.addEventListener('keydown', (event) => {
+		const key = event.key;
+		const { row, col } = keyboardSelected;
+		
+		switch (key) {
+			case 'ArrowUp':
+				keyboardSelected.row = row > 0 ? row - 1 : 7;
+				break;
+			case 'ArrowDown':
+				keyboardSelected.row = row < 7 ? row + 1 : 0;
+				break;
+			case 'ArrowLeft':
+				keyboardSelected.col = col > 0 ? col - 1 : 7;
+				break;
+			case 'ArrowRight':
+				keyboardSelected.col = col < 7 ? col + 1 : 0;
+				break;
+			case 'Enter':
+				handleKeyboardSelection();
+				return;
+		}
+		updateKeyboardSelection();  
+	});
+	function updateKeyboardSelection() {
+		document.querySelectorAll('.selected').forEach(cell => cell.classList.remove('selected'));
+		
+		const cell = chessboard.rows[keyboardSelected.row].cells[keyboardSelected.col];
+		cell.classList.add('selected');
+	}
+
+	function handleKeyboardSelection() {
+		const cell = chessboard.rows[keyboardSelected.row].cells[keyboardSelected.col];
+
+		if (selectedCell) {
+			if (isMoveValid(selectedCell, cell)) {
+
+				if (cell.textContent.trim()) {
+					addCapturedPiece(cell.textContent);  
+				}
+
+				cell.textContent = selectedCell.textContent;
+				selectedCell.textContent = '';
+				addToHistory(`${convertToNotation(parseInt(selectedCell.dataset.col), 8 - parseInt(selectedCell.dataset.row))}-${convertToNotation(keyboardSelected.col, 8 - keyboardSelected.row)}`);
+				selectedCell.classList.remove('selected');
+				selectedCell = null;
+				switchTurn();
+			}
+		} else if (cell.textContent !== '') {
+			selectedCell = cell;
+			cell.classList.add('selected');
+		}
+	}
+
+	executeMoveBtn.addEventListener('click', executeMove);
+	exportHistoryBtn.addEventListener('click', exportHistory);
+	
+
+	const importHistoryInput = document.getElementById('importHistory');
+	const importHistoryBtn = document.getElementById('importHistoryBtn');
+
+	function clearCurrentGameState() {
+		
+		gameHistory = [];
+		historyList.innerHTML = '';
+
+		capturedWhite.innerHTML = '';
+		capturedBlack.innerHTML = '';
+
+		resetBoard();
+	}
+
+	importHistoryBtn.addEventListener('click', () => {
+    const file = importHistoryInput.files[0];
+    if (!file) {
+        alert('Моля, изберете файл за импорт.');
+        return;
+    }
+    clearCurrentGameState(); 
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const importedMoves = e.target.result.trim().split('\n');
+        gameHistory = importedMoves;  
+        historyList.innerHTML = '';  
+
+        importedMoves.forEach(move => {
+            const listItem = document.createElement('li');
+            listItem.textContent = move;
+            historyList.appendChild(listItem);
+        });
+
+        replayGame(importedMoves);  
+    };
+    reader.readAsText(file);
+});
+
+	
+	document.getElementById('importHistoryBtn').addEventListener('click', () => {
+    const fileInput = document.getElementById('importHistory');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Моля, изберете файл за импортиране!');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const historyText = event.target.result;
+        const moves = historyText.split('\n').filter(move => move.trim() !== '');
+        loadHistory(moves);
+    };
+    reader.readAsText(file);
+});
+
+	function loadHistory(moves) {
+    gameHistory = moves;
+    historyList.innerHTML = ''; 
+    moves.forEach(move => {
+        const listItem = document.createElement('li');
+        listItem.textContent = move;
+        historyList.appendChild(listItem);
+    });
+}
+
+	function replayGame(moves) {
+    resetBoard(); 
+    let moveIndex = 0;
+    isWhiteTurn = true;  
+
+    const interval = setInterval(() => {
+        if (moveIndex < moves.length) {
+            const { startCol, startRow, endCol, endRow } = convertNotationToCoords(moves[moveIndex]);
+
+            const startCell = chessboard.rows[startRow].cells[startCol];
+            const endCell = chessboard.rows[endRow].cells[endCol];
+
+            if (endCell.textContent.trim()) {
+                addCapturedPiece(endCell.textContent);
+            }
+				startCell.classList.remove('moving-piece');
+				endCell.classList.remove('moving-piece');
+				
+            endCell.textContent = startCell.textContent;
+            startCell.textContent = '';
+
+            moveIndex++;
+            isWhiteTurn = !isWhiteTurn; 
+        } else {
+            clearInterval(interval);  
+            alert('Импортираната игра е разиграна успешно!');
+        }
+    }, 1200); 
+}
+
+function updateCapturedFigures(piece) {
+    const capturedColor = piece.classList.contains('white') ? 'White' : 'Black'; 
+    const capturedList = document.getElementById(`captured${capturedColor}`).querySelector('ul'); 
+
+    const capturedItem = document.createElement('li');
+    capturedItem.textContent = piece.classList[1]; 
+    capturedList.appendChild(capturedItem); 
+}//here
+function clearCapturedFigures() {
+    const whiteList = document.getElementById('capturedWhite').querySelector('ul');
+    const blackList = document.getElementById('capturedBlack').querySelector('ul');
+    whiteList.innerHTML = ''; 
+    blackList.innerHTML = ''; 
+}
+
+function importGame(data) {
+ 
+    clearCapturedFigures();
+
+    data.capturedWhite.forEach(piece => {
+        const capturedList = document.getElementById('capturedWhite').querySelector('ul');
+        const capturedItem = document.createElement('li');
+        capturedItem.textContent = piece; 
+        capturedList.appendChild(capturedItem); 
+    });
+
+    data.capturedBlack.forEach(piece => {
+        const capturedList = document.getElementById('capturedBlack').querySelector('ul');
+        const capturedItem = document.createElement('li');
+        capturedItem.textContent = piece;
+        capturedList.appendChild(capturedItem);
+    });
+
+    
+    loadGamePositions(data.positions);
+}
+
+const importedGameData = {
+    capturedWhite: ['king', 'queen'],  
+    capturedBlack: ['pawn', 'bishop'], 
+    positions: [] 
+};
+
+
+function movePiece(from, to, piece) {
+
+    const targetCell = document.getElementById(to);
+    if (targetCell && targetCell.children.length > 0) {
+        const capturedPiece = targetCell.children[0];
+        updateCapturedFigures(capturedPiece); 
+        targetCell.innerHTML = ''; 
+    }
+
+ 
+    const fromCell = document.getElementById(from);
+    const pieceElement = fromCell.children[0];
+    const toCell = document.getElementById(to);
+    toCell.appendChild(pieceElement);
+    fromCell.innerHTML = ''; 
+}
+
+
+
+
+	function resetBoard() {
+
+		for (let row = 0; row < 8; row++) {
+			for (let col = 0; col < 8; col++) {
+				const cell = chessboard.rows[row].cells[col];
+				cell.textContent = '';
+			}
+		}
+
+		for (let col = 0; col < 8; col++) {
+			chessboard.rows[0].cells[col].textContent = pieces.black[col];
+			chessboard.rows[1].cells[col].textContent = pieces.pawn.black;
+			chessboard.rows[6].cells[col].textContent = pieces.pawn.white;
+			chessboard.rows[7].cells[col].textContent = pieces.white[col];
+		}
+	}
+
+	function addCapturedPiece(piece) {
+    const capturedPiece = document.createElement('li');
+    capturedPiece.textContent = piece;
+
+    if (piece.startsWith('♟') || piece.startsWith('♞') || piece.startsWith('♝') || piece.startsWith('♜') || piece.startsWith('♛') || piece.startsWith('♚')) {
+        capturedBlack.appendChild(capturedPiece);  
+    } else {
+        capturedWhite.appendChild(capturedPiece);  
+    }
+}
+
+	createChessboard();
+	updateCurrentPlayer();
+
+</script>
+</body>
+</html>
