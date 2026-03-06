@@ -11,7 +11,6 @@ You can try the chessboard directly in your browser:
 🔗 https://vkatreva.github.io/interactive-chessboard/
 
 
-
 ## Features
 
 * Interactive chessboard interface
@@ -24,7 +23,6 @@ You can try the chessboard directly in your browser:
 * Turn indicator (which player's move it is)
 
 
-
 ## Technologies Used
 
 * **HTML5**
@@ -32,15 +30,11 @@ You can try the chessboard directly in your browser:
 * **JavaScript**
 
 
-## How to Run the Project
+## 🚀 How to Run the Project
 
-1. Clone or download the repository
-2. Open the project folder
-3. Run the file:
-
-index.html
-
-in your web browser.
+1. Clone or download the repository  
+2. Open the project folder  
+3. Run the file `index.html` in your web browser
 
 This project is available for educational purposes.
 
