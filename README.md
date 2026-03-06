@@ -30,7 +30,7 @@ You can try the chessboard directly in your browser:
 * **JavaScript**
 
 
-## 🚀 How to Run the Project
+## How to Run the Project
 
 1. Clone or download the repository  
 2. Open the project folder  
