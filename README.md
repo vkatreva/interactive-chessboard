@@ -35,6 +35,3 @@ You can try the chessboard directly in your browser:
 1. Clone or download the repository  
 2. Open the project folder  
 3. Run the file `index.html` in your web browser
-
-This project is available for educational purposes.
-
