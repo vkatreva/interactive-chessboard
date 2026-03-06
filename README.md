@@ -3,7 +3,6 @@
 An interactive chessboard web application built using **HTML**, **CSS**, and **JavaScript**.
 The project provides a visual chessboard where users can interact with pieces and make moves directly in the browser.
 
----
 
 ## Play Online
 
@@ -11,7 +10,7 @@ You can try the chessboard directly in your browser:
 
 🔗 https://vkatreva.github.io/interactive-chessboard/
 
----
+
 
 ## Features
 
@@ -24,15 +23,14 @@ You can try the chessboard directly in your browser:
 * Display of captured pieces
 * Turn indicator (which player's move it is)
 
----
 
-## 🛠️ Technologies Used
+
+## Technologies Used
 
 * **HTML5**
 * **CSS3**
 * **JavaScript**
 
----
 
 ## How to Run the Project
 
@@ -45,3 +43,4 @@ index.html
 in your web browser.
 
 This project is available for educational purposes.
+
